@@ -3,7 +3,7 @@
 library(readr)
 library(lme4)
 library(ggplot2)
-library(dplyr)
+#library(dplyr)
 library(tidyr)
 library(psych)
 library(gdata)
@@ -70,7 +70,38 @@ summary(cfos.pca)
 # check the variance explained by various factors
 plot(cfos.pca,type = 'l')
 
+cfos$genotype01 <- as.factor(cfos$genotype01)
 
+ggplot(aes(x=genotype01, y=IL),data = cfos) +
+  geom_count()
+ggplot(aes(x=genotype01, y=DMS),data = cfos) +
+  geom_count()
+ggplot(aes(x=genotype01, y=cfos$`NAc C`),data = cfos) +
+  geom_count()
+
+
+boxplot(IL ~ genotype01, data = cfos, main = "cfos activity by genotype",
+        xlab = "SAPAP3 genotype", ylab = "cfos, IL", varwidth = TRUE, col =  cm.colors(3))
+
+boxplot(mOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
+        xlab = "SAPAP3 genotype", ylab = "cfos, mOFC", varwidth = TRUE, col =  cm.colors(3))
+
+boxplot(lOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
+        xlab = "SAPAP3 genotype", ylab = "cfos, lOFC", varwidth = TRUE, col =  cm.colors(3))
+
+# make tall cfos
+cshort <- cfos[,c(1:2,7:18)]
+cshort <- as.data.frame(cshort)
+t_cfos <- melt(cshort,id.vars = c("id","genotype01"))
+names(t_cfos)[names(t_cfos)=="value"] <- "cfos"
+names(t_cfos)[names(t_cfos)=="variable"] <- "region"
+
+summary(cm1 <- lm(cfos ~ region*genotype01, data = t_cfos))
+
+pdf("cfos by region and genotype.pdf", width=12, height=6)
+boxplot(cfos ~ genotype01 + region, data = t_cfos, main = "cfos activity by SAPAP3 genotype (blue = WT, purple = KO) and region",
+        xlab = "Region", ylab = "cfos", varwidth = TRUE, col =  cm.colors(2))
+dev.off()
 # only striatal
 # str_rois <- cfos[,13:18]
 # head(str_rois)
@@ -203,9 +234,9 @@ dev.off()
 
 #  quick look at genotype
 # correct
-summary(mcorrg1 <- glm(corr ~ t.num*Genotype + I(t.num^2) + I(t.num^3) + (1:id), family = negative.binomial(theta = theta.corr), data = hdf))
+summary(mcorrg1 <- glm(corr ~ t.num*Genotype +  (1:id), family = negative.binomial(theta = theta.corr), data = hdf))
 #incorrect
-summary(mincg1 <- glm(inc ~ t.num*Genotype + I(t.num^2) + I(t.num^3) + (1:id), family = negative.binomial(theta = theta.inc), data = hdf))
+summary(mincg1 <- glm(inc ~ t.num*Genotype +  (1:id), family = negative.binomial(theta = theta.inc), data = hdf))
 
 summary(lmc1 <- lm(cfos$tot_correct ~ cfos$genotype01))
 summary(lmi1 <- lm(cfos$tot_incorrect ~ cfos$genotype01))
@@ -230,9 +261,17 @@ car::Anova(mrespg2)
 
 summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DLS*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg3)
+lsmip(mrespg3, DLS ~ t.num | type, at = list(DLS = c(10,100,200),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+# ls.respg3 <- lsmeans(mrespg3,"type", by = list(c("Genotype","DLS")), at = list(c(DLS = c(50,200))))
+# plot(ls.respg3, type ~ response, horiz=F,ylab = "Response levels", xlab = "type")
 
 
-summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + bdfc$`NAc S`*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + `NAc S`*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg4)
+lsmip(mrespg4, `NAc S` ~ t.num | type, at = list(`NAc S` = c(10,100,200),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+
+summary(mrespg5 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + lOFC*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg5)
+
 
 # conclusion: strong effects of cfos, weak effect of genotype, + interactions
