@@ -41,6 +41,10 @@ names(cfos)[names(cfos)=="ID"] <- "id"
 names(cfos)[names(cfos)=="correct"] <- "tot_correct"
 names(cfos)[names(cfos)=="incorrrect"] <- "tot_incorrect"
 names(cfos)[names(cfos)=="Genotype"] <- "genotype01"
+names(cfos)[names(cfos)=="NAc S"] <- "NAccS"
+names(cfos)[names(cfos)=="NAc C"] <- "NAccC"
+
+
 #View(cfos)
 # check PCA on cfos
 
@@ -76,18 +80,18 @@ ggplot(aes(x=genotype01, y=IL),data = cfos) +
   geom_count()
 ggplot(aes(x=genotype01, y=DMS),data = cfos) +
   geom_count()
-ggplot(aes(x=genotype01, y=cfos$`NAc C`),data = cfos) +
+ggplot(aes(x=genotype01, y=NAccS),data = cfos) +
   geom_count()
 
 
-boxplot(IL ~ genotype01, data = cfos, main = "cfos activity by genotype",
-        xlab = "SAPAP3 genotype", ylab = "cfos, IL", varwidth = TRUE, col =  cm.colors(3))
-
-boxplot(mOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
-        xlab = "SAPAP3 genotype", ylab = "cfos, mOFC", varwidth = TRUE, col =  cm.colors(3))
-
-boxplot(lOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
-        xlab = "SAPAP3 genotype", ylab = "cfos, lOFC", varwidth = TRUE, col =  cm.colors(3))
+# boxplot(IL ~ genotype01, data = cfos, main = "cfos activity by genotype",
+#         xlab = "SAPAP3 genotype", ylab = "cfos, IL", varwidth = TRUE, col =  cm.colors(3))
+#
+# boxplot(mOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
+#         xlab = "SAPAP3 genotype", ylab = "cfos, mOFC", varwidth = TRUE, col =  cm.colors(3))
+#
+# boxplot(lOFC ~ genotype01, data = cfos, main = "cfos activity by genotype",
+#         xlab = "SAPAP3 genotype", ylab = "cfos, lOFC", varwidth = TRUE, col =  cm.colors(3))
 
 # make tall cfos
 cshort <- cfos[,c(1:2,7:18)]
@@ -245,7 +249,7 @@ summary(lmg1 <- lm(cfos$grooming.time ~ cfos$genotype01))
 # both
 # calculate theta for both responses
 theta.resp <- theta.ml(c.all$response, mean(c.all$response), 1026, limit = 50, eps = .Machine$double.eps^.25, trace = FALSE)
-summary(mrespg1 <- glm(response ~ 1 + t.num*type+ type*Genotype + t.num*Genotype +  (1:id), family = negative.binomial(theta = theta.resp), data = bdf))
+summary(mrespg1 <- glm(response ~ 1 + t.num*type+ type*t.num*Genotype +  (1:id), family = negative.binomial(theta = theta.resp), data = bdf))
 car::Anova(mrespg1)
 
 # plot over time by genotype
@@ -261,17 +265,32 @@ car::Anova(mrespg2)
 
 summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DLS*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg3)
+
 lsmip(mrespg3, DLS ~ t.num | type, at = list(DLS = c(10,100,200),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
-# ls.respg3 <- lsmeans(mrespg3,"type", by = list(c("Genotype","DLS")), at = list(c(DLS = c(50,200))))
-# plot(ls.respg3, type ~ response, horiz=F,ylab = "Response levels", xlab = "type")
+
+# stronger extinction at stronger activity, more perseverative at lower activity
+ls.respg3 <- lsmeans(mrespg3,"t.num", by = "DLS", at = list(DLS = c(10,100,200),t.num = c(1000, 9000, 18000)))
+plot(ls.respg3, type ~ response, horiz=F,ylab = "Response levels", xlab = "time, 100s bins")
+
+# better reversal at higher DLS cfos levels
+ls.respg3a <- lsmeans(mrespg3,"type", by = "DLS", at = list(DLS = c(10,100,200)))
+plot(ls.respg3a, type ~ response, horiz=F,ylab = "Response levels", xlab = "Response type")
+
+# stronger extinction in WT as a Fx(DLS) than in KO
+lsmip(mrespg3, DLS ~ t.num | Genotype, at = list(DLS = c(10,100,200),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
 
 
-summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + `NAc S`*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+
+summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAccS*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg4)
-lsmip(mrespg4, `NAc S` ~ t.num | type, at = list(`NAc S` = c(10,100,200),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+lsmip(mrespg4, NAccS ~ t.num | Genotype , at = list(NAccS = c(50,150,300),t.num = c(1000, 9000, 18000)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+lsmip(mrespg4, NAccS ~ type | Genotype , at = list(NAccS = c(50,150,300)), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+
+# anova(mrespg3,mrespg4, test = "Rao")
 
 summary(mrespg5 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + lOFC*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg5)
+
 
 
 # conclusion: strong effects of cfos, weak effect of genotype, + interactions
