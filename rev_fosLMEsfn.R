@@ -25,44 +25,46 @@ library(fastICA)
 library(plotly)
 library(stargazer)
 # read in the data
-setwd("/Users/manninge/Documents/GitHub/SAPAP3_reversal/")
-d <- read_excel("/Users/manninge/Documents/GitHub/SAPAP3_reversal/SAPAP3 cFos cohort lever press timestamp reversal day 1.xlsx")
+setwd("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/")
+d <- read_excel("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/SAPAP3 cFos cohort lever press timestamp reversal day 1.xlsx")
 setwd("~/code/SAPAP3_reversal/")
 d <- read_excel("~/code/SAPAP3_reversal/SAPAP3 cFos cohort lever press timestamp reversal day 1.xlsx")
 View(d)
 
 
 # read in genotype
-g <- read_excel("/Users/manninge/Documents/GitHub/SAPAP3_reversal/Reversal cFos cohort blind.xlsx")
+g <- read_excel("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/Reversal cFos cohort blind.xlsx")
 g <- read_excel("~/code/SAPAP3_reversal/Reversal cFos cohort blind.xlsx")
 g$id <- g$`Physical Tag`
 g <- g[,2:3]
 
 
 # read in cfos cell counts
-cfos <- read_csv("/Users/manninge/Documents/GitHub/SAPAP3_reversal/SAPAP3 reversal cFos density_Final mice.csv")
+#removed M2/M1 January 2018
+cfos <- read_csv("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/SAPAP3 reversal cFos density_Final mice.csv")
 cfos <- read_csv("~/code/SAPAP3_reversal/SAPAP3 reversal cFos density_Final mice.csv")
 names(cfos)[names(cfos)=="ID"] <- "id"
 names(cfos)[names(cfos)=="correct"] <- "tot_correct"
 names(cfos)[names(cfos)=="incorrrect"] <- "tot_incorrect"
 names(cfos)[names(cfos)=="Genotype"] <- "genotype01"
-names(cfos)[names(cfos)=="NAc S"] <- "NAccS"
-names(cfos)[names(cfos)=="NAc C"] <- "NAccC"
+names(cfos)[names(cfos)=="NAc S"] <- "NAcS"
+names(cfos)[names(cfos)=="NAc C"] <- "NAcC"
 
 
 View(cfos)
 # check PCA on cfos
 
-just_rois <- cfos[,7:18]
+just_rois <- cfos[,7:16]
 #head(just_rois)
 feedROIcor <- cor(just_rois)
-pdf("cfos correlations by regions.pdf", width=12, height=12)
+pdf("cfos correlations by regions_no.pdf", width=12, height=12)
 corrplot(feedROIcor, cl.lim=c(0,1),
          method = "circle", tl.cex = 1.5, type = "upper", tl.col = 'black',
          order = "hclust", diag = FALSE,
          addCoef.col="orange", addCoefasPercent = FALSE,
          p.mat = 1-feedROIcor, sig.level=0.5, insig = "blank")
 dev.off()
+
 
 cfos.pca = prcomp((just_rois),scale = TRUE, center = TRUE)
 
@@ -551,13 +553,13 @@ hist(just_rois$NAccS)
 hist(cfos$CMS)
 hist(bdfc$grooming.time)
 sd(cfos$NAccS)
-median(cfos$NAccS)
-mean(cfos$NAccS)
+median(cfos$CMS)
+sd(cfos$CMS)
 mean(cfos$val3)
 
 #checking regions quickly
 summary(mrespg10 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
-summary(mrespg10 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAccC*t.num*Genotype + NAccC*type*Genotype + NAccC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg10 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + lOFC*t.num*Genotype + lOFC*type*Genotype + lOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg10)
 lsmip(mrespg10, CMS ~ type | Genotype , at = list(grooming.time = c(25,75,150)), ylab = "log(response rate)", xlab = "Type", type = "predicted" )
 lsmip(mrespg10, CMS ~ type | Genotype , at = list(CMS = c(25,75,150)), ylab = "log(response rate)", xlab = "Type", type = "predicted" )
@@ -569,7 +571,7 @@ lsmip(mrespg10, CMS ~ type | Genotype , at = list(CMS = c(25,75,150)), ylab = "l
 library(multcompView)
 summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DLS*t.num*Genotype + DLS*type*Genotype + DLS*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg3)
-leastsquare = lsmeans(mrespg3, pairwise ~ DLS:Genotype:type, at = list(DLS = c(10,100,200)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg3, pairwise ~ DLS:Genotype:type, at = list(DLS = c(10,100,200)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
@@ -580,7 +582,7 @@ pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = DLS, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
 
@@ -609,24 +611,24 @@ ggplot(CLD, aes( x = DLS, y = lsmean, color = Genotype, label = .group)) +
               nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
   # nudge_y = 0, color   = "black") +
   
-    scale_color_manual(values = c("magenta3","black"))
+    scale_color_manual(values = c("black","black"))
 dev.off()
 
 #GRAPH NAcS
-summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAccS*t.num*type + NAccS*t.num*Genotype + NAccS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg4)
-leastsquare = lsmeans(mrespg4, pairwise ~ NAccS:Genotype:type, at = list(NAccS = c(50,150,250)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg4, pairwise ~ NAcS:Genotype:type, at = list(NAcS = c(50,150,250)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
           adjust='tukey')
 CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
-pdf(file = "NAccS plot pretty PRETTY.pdf", width = 10, height = 6)
-pd = position_dodge(15)    ### How much to jitter the points on the plot
-ggplot(CLD, aes( x = NAccS, y = lsmean, color = Genotype, label = .group)) +
+pdf(file = "NAcS plot pretty PRETTY.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = NAcS, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
   
@@ -652,8 +654,8 @@ ggplot(CLD, aes( x = NAccS, y = lsmean, color = Genotype, label = .group)) +
     "(Tukey-adjusted comparisons for 12 estimates)."),
     hjust = 0.5 ) +
   geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
-            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
-  # nudge_y = 0, color   = "black") +
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
   
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
@@ -662,7 +664,7 @@ dev.off()
 summary(mrespg6 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*Genotype + PrL*type*Genotype + PrL*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg6)
 
-leastsquare = lsmeans(mrespg6, pairwise ~ PrL:Genotype:type, at = list(PrL = c(200,400,600)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg6, pairwise ~ PrL:Genotype:type, at = list(PrL = c(200,400,600)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
@@ -673,7 +675,7 @@ pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = PrL, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
   
@@ -702,13 +704,13 @@ ggplot(CLD, aes( x = PrL, y = lsmean, color = Genotype, label = .group)) +
             nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
   # nudge_y = 0, color   = "black") +
   
-  scale_color_manual(values = c("magenta3","black"))
+  scale_color_manual(values = c("black","black"))
 dev.off()
 
 #lOFC graph
 summary(mrespg5 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + lOFC*t.num*Genotype + lOFC*type*Genotype + lOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg5)
-leastsquare = lsmeans(mrespg5, pairwise ~ lOFC:Genotype:type, at = list(lOFC = c(400,800,1200)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg5, pairwise ~ lOFC:Genotype:type, at = list(lOFC = c(400,800,1200)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
@@ -719,7 +721,7 @@ pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = lOFC, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
   
@@ -748,13 +750,13 @@ ggplot(CLD, aes( x = lOFC, y = lsmean, color = Genotype, label = .group)) +
             nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
   # nudge_y = 0, color   = "black") +
   
-  scale_color_manual(values = c("black", "magenta3"))
+  scale_color_manual(values = c("black", "black"))
 dev.off()
 
 #GRAPH mOFC
 summary(mrespg8 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*Genotype + mOFC*type*Genotype + mOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg8)
-leastsquare = lsmeans(mrespg8, pairwise ~ mOFC:Genotype:type, at = list(mOFC = c(400,700,1000)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg8, pairwise ~ mOFC:Genotype:type, at = list(mOFC = c(400,700,1000)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
@@ -765,7 +767,7 @@ pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
   
@@ -794,14 +796,14 @@ ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) +
             nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
   # nudge_y = 0, color   = "black") +
   
-  scale_color_manual(values = c("magenta3","black"))
+  scale_color_manual(values = c("black","black")) #KO first
 dev.off()
 
 #CMS GRAPH
 summary(mrespg11 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + CMS*t.num*Genotype + CMS*type*Genotype + CMS*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg11)
 
-leastsquare = lsmeans(mrespg11, pairwise ~ CMS:Genotype:type, at = list(CMS = c(25,75,150)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg11, pairwise ~ CMS:Genotype:type, at = list(CMS = c(25,75,150)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
@@ -812,7 +814,7 @@ pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = CMS, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
   
-  geom_point(shape  = 15,
+  geom_point(shape  = 16,
              size   = 4,
              position = pd) +
   
@@ -841,7 +843,100 @@ ggplot(CLD, aes( x = CMS, y = lsmean, color = Genotype, label = .group)) +
             nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
   # nudge_y = 0, color   = "black") +
   
-  scale_color_manual(values = c("magenta3","black"))
+  scale_color_manual(values = c("black","black"))
 dev.off()
 
+# pretty graph DLS time x type graphs
+#lsmip(mrespg3, DLS ~ t.num | Genotype, at = list(DLS = c(10,100,200),t.num = c(bins[2],bins[length(bins)]/2, bins[length(bins)])), ylab = "log(response rate)", xlab = "Time, s ", type = "predicted" )
+library(multcompView)
+summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DLS*t.num*Genotype + DLS*type*Genotype + DLS*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg3)
+leastsquare = lsmeans::lsmeans(mrespg3, pairwise ~ DLS:t.num:type, at = list(DLS = c(10,100,200),t.num = c(bins[2],bins[length(bins)]/2, bins[length(bins)])), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "DLS plot pretty time.pdf", width = 10, height = 6)
+pd = position_dodge(15)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = DLS, y = lsmean, color = t.num, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("Dorsolateral striatum cfos") +
+  ggtitle ("Behavior in reversal phase by time, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
+  # nudge_y = 0, color   = "black") +
+  
+  scale_color_manual(values = c("black","black"))
+dev.off()
+
+#GRAPH NAcS genotype x time
+summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg4)
+leastsquare = lsmeans::lsmeans(mrespg4, pairwise ~ NAcS:Genotype:t.num, at = list(NAcS = c(50,150,250),t.num = c(1,225,449)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "NAcS plot pretty genotype x time.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = NAcS, y = lsmean, color = t.num, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("Nucleus Accumbens Shell cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
 
