@@ -47,8 +47,8 @@ names(cfos)[names(cfos)=="ID"] <- "id"
 names(cfos)[names(cfos)=="correct"] <- "tot_correct"
 names(cfos)[names(cfos)=="incorrrect"] <- "tot_incorrect"
 names(cfos)[names(cfos)=="Genotype"] <- "genotype01"
-names(cfos)[names(cfos)=="NAcS"] <- "NAcS"
-names(cfos)[names(cfos)=="NAcC"] <- "NAcC"
+names(cfos)[names(cfos)=="NAc S"] <- "NAcS"
+names(cfos)[names(cfos)=="NAc C"] <- "NAcC"
 
 
 View(cfos)
@@ -902,11 +902,11 @@ library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
           adjust='tukey')
-CLD$type <- recode_factor(CLD$t.num,c(1)="early",c(225)="mid",c(449)="late")
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
 pdf(file = "NAcS plot pretty genotype x time.pdf", width = 10, height = 6)
 pd = position_dodge(35)    ### How much to jitter the points on the plot
-ggplot(CLD, aes( x = NAcS, y = lsmean, color = genotype, label = .group)) +
-  facet_wrap( ~ t.num) +
+ggplot(CLD, aes( x = NAcS, y = lsmean, color = t.num, label = .group)) +
+  facet_wrap( ~ type) +
   
   geom_point(shape  = 16,
              size   = 4,
