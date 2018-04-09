@@ -24,6 +24,7 @@ library(lattice)
 library(fastICA)
 library(plotly)
 library(stargazer)
+library(rio)
 # read in the data
 setwd("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/")
 d <- read_excel("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/SAPAP3 cFos cohort lever press timestamp reversal day 1.xlsx")
@@ -41,7 +42,7 @@ g <- g[,2:3]
 
 # read in cfos cell counts
 #removed M2/M1 January 2018
-cfos <- read_csv("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/040418cFos_correct.csv")
+cfos <- read_csv("/Users/Lizzie/Documents/GitHub/SAPAP3_reversal/cFos_040618_finalmice.csv")
 cfos <- read_csv("~/code/SAPAP3_reversal/SAPAP3 reversal cFos density_Final mice.csv")
 names(cfos)[names(cfos)=="ID"] <- "id"
 names(cfos)[names(cfos)=="correct"] <- "tot_correct"
@@ -159,7 +160,7 @@ ggplot(aes(x=genotype01, y=IL),data = cfos) +
   geom_count()
 ggplot(aes(x=genotype01, y=DMS),data = cfos) +
   geom_count()
-ggplot(aes(x=genotype01, y=NAccS),data = cfos) +
+ggplot(aes(x=genotype01, y=NAcS),data = cfos) +
   geom_count()
 
 
@@ -173,9 +174,10 @@ ggplot(aes(x=genotype01, y=NAccS),data = cfos) +
 #         xlab = "SAPAP3 genotype", ylab = "cfos, lOFC", varwidth = TRUE, col =  cm.colors(3))
 
 # make tall cfos
-cshort <- cfos[,c(1:2,7:18)]
+cshort <- cfos[,c(1:2,7:16)]
 cshort <- as.data.frame(cshort)
 t_cfos <- melt(cshort,id.vars = c("id","genotype01"))
+View(t_cfos)
 names(t_cfos)[names(t_cfos)=="value"] <- "cfos"
 names(t_cfos)[names(t_cfos)=="variable"] <- "region"
 
@@ -558,8 +560,8 @@ sd(cfos$VMS)
 mean(cfos$VMS)
 
 #checking regions quickly
-summary(mrespg0404 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
-summary(mrespg0404a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype +lOFC*t.num*Genotype + lOFC*type*Genotype + lOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg0404 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + IL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg0404a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*Genotype + mOFC*type*Genotype + mOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg0404a)
 lsmip(mrespg10, CMS ~ type | Genotype , at = list(grooming.time = c(25,75,150)), ylab = "log(response rate)", xlab = "Type", type = "predicted" )
 lsmip(mrespg10, CMS ~ type | Genotype , at = list(CMS = c(25,75,150)), ylab = "log(response rate)", xlab = "Type", type = "predicted" )
@@ -614,7 +616,101 @@ ggplot(CLD, aes( x = DLS, y = lsmean, color = Genotype, label = .group)) +
     scale_color_manual(values = c("magenta","black"))
 dev.off()
 
+# pretty graph mOFC 040618
+library(multcompView)
+summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*Genotype + mOFC*type*Genotype + mOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg3)
+leastsquare = lsmeans::lsmeans(mrespg3, pairwise ~ mOFC:Genotype:type, at = list(mOFC = c(400,700,1000)), adjust='tukey')
+library(dplyr)
 
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "mOFC plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(15)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("mOFC cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
+  # nudge_y = 0, color   = "black") +
+  
+  scale_color_manual(values = c("magenta","black"))
+dev.off()
+
+
+# pretty graph IL 040618
+library(multcompView)
+summary(mrespg3a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + IL*t.num*Genotype + IL*type*Genotype + IL*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg3a)
+leastsquare = lsmeans::lsmeans(mrespg3a, pairwise ~ IL:Genotype:type, at = list(IL = c(150,300,450)), adjust='tukey')
+library(dplyr)
+hist(cfos$IL)
+mean(cfos$IL)
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "IL plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(15)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = IL, y = lsmean, color = Genotype, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("IL cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") +
+  # nudge_y = 0, color   = "black") +
+  
+  scale_color_manual(values = c("magenta","black"))
+dev.off()
 
 #GRAPH NAcS 040418
 summary(mrespg4 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
@@ -708,7 +804,7 @@ ggplot(CLD, aes( x = NAcC, y = lsmean, color = Genotype, label = .group)) +
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
 
-#PrL GRAPH 040418
+#PrL GRAPH 040618
 summary(mrespg6 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*Genotype + PrL*type*Genotype + PrL*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg6)
 #summary(mrespg6FULL <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
@@ -721,7 +817,7 @@ library(dplyr)
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
           adjust='tukey')
 CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
-pdf(file = "PrL plot pretty 040418.pdf", width = 10, height = 6)
+pdf(file = "PrL plot pretty 040618.pdf", width = 10, height = 6)
 pd = position_dodge(15)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = PrL, y = lsmean, color = Genotype, label = .group)) +
   facet_wrap( ~ type) +
@@ -808,19 +904,19 @@ dev.off()
 
 
 
-#GRAPH mOFC genotype x time 040418
-summary(mrespg5 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*type + mOFC*t.num*Genotype + mOFC*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+#GRAPH NAcS genotype x time 040618
+summary(mrespg5 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg5)
-leastsquare = lsmeans::lsmeans(mrespg5, pairwise ~ mOFC:Genotype:t.num, at = list(mOFC = c(400,700,1000),t.num = c(1,225,449)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg5, pairwise ~ NAcS:Genotype:t.num, at = list(mOFC = c(50,150,250),t.num = c(1,225,449)), adjust='tukey')
 library(dplyr)
 
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
           adjust='tukey')
 CLD$t.num <- as.factor(CLD$t.num)
 CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
-pdf(file = "mOFC plot pretty genotype x time 040418.pdf", width = 10, height = 6)
+pdf(file = "NAcS plot pretty genotype x time 040618.pdf", width = 10, height = 6)
 pd = position_dodge(35)    ### How much to jitter the points on the plot
-ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
+ggplot(CLD, aes( x = NAcS, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
   facet_wrap( ~ type) +
   geom_point(shape  = 16,
              size   = 4,
@@ -837,7 +933,7 @@ ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) + #wha
     axis.title   = element_text(face = "bold"),
     axis.text    = element_text(face = "bold"),
     plot.caption = element_text(hjust = 0)
-  ) +  ylab("Log-probability of response") + xlab("mOFC cfos") +
+  ) +  ylab("Log-probability of response") + xlab("NAcS cfos") +
   ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
   labs( caption  = paste0(
     "\n",
@@ -855,17 +951,19 @@ ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) + #wha
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
 
-#GRAPH NAcC genotype x time 040418
+#GRAPH NAcC genotype x time 040618
 summary(mrespg4a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcC*t.num*type + NAcC*t.num*Genotype + NAcC*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg4a)
-leastsquare = lsmeans::lsmeans(mrespg4a, pairwise ~ NAcC:Genotype:t.num, at = list(NAcC = c(400,800,1200),t.num = c(1,225,449)), adjust='tukey')
+leastsquare = lsmeans::lsmeans(mrespg4a, pairwise ~ NAcC:Genotype:t.num, at = list(NAcC = c(50,150,300),t.num = c(1,225,449)), adjust='tukey')
 library(dplyr)
-
+hist(cfos$NAcC)
+mean(cfos$NAcC)
+sd(cfos$NAcC)
 CLD = cld(leastsquare, alpha=0.05, Letters=letters,
           adjust='tukey')
 CLD$t.num <- as.factor(CLD$t.num)
 CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
-pdf(file = "NAcC plot pretty genotype x time 040418.pdf", width = 10, height = 6)
+pdf(file = "NAcC plot pretty genotype x time 040618.pdf", width = 10, height = 6)
 pd = position_dodge(35)    ### How much to jitter the points on the plot
 ggplot(CLD, aes( x = NAcC, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
   facet_wrap( ~ type) +
@@ -902,7 +1000,196 @@ ggplot(CLD, aes( x = NAcC, y = lsmean, color = Genotype, label = .group)) + #wha
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
 
- 
+#GRAPH NAcS (B) genotype x time 040618
+summary(mrespg4b <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg4b)
+leastsquare = lsmeans::lsmeans(mrespg4b, pairwise ~ NAcS:Genotype:t.num, at = list(NAcS = c(50,150,250),t.num = c(1,225,449)), adjust='tukey')
+library(dplyr)
+hist(cfos$NAcC)
+mean(cfos$NAcC)
+sd(cfos$NAcC)
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$t.num <- as.factor(CLD$t.num)
+CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
+pdf(file = "NAcS plot pretty genotype x time 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = NAcS, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
+  facet_wrap( ~ type) +
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  
+  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("NAcS cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+#GRAPH PrL genotype x time 040618
+summary(mrespg6 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + PrL*t.num*type + PrL*t.num*Genotype + PrL*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg6)
+leastsquare = lsmeans::lsmeans(mrespg6, pairwise ~ PrL:Genotype:t.num, at = list(PrL = c(200,400,600),t.num = c(1,225,449)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$t.num <- as.factor(CLD$t.num)
+CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
+pdf(file = "PrL plot pretty genotype x time 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = PrL, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
+  facet_wrap( ~ type) +
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  
+  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("PrL cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+
+#GRAPH mOFC genotype x time 040618
+summary(mrespg3 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*type + mOFC*t.num*Genotype + mOFC*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg3)
+leastsquare = lsmeans::lsmeans(mrespg3, pairwise ~ mOFC:Genotype:t.num, at = list(mOFC = c(400,700,1000),t.num = c(1,225,449)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$t.num <- as.factor(CLD$t.num)
+CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
+pdf(file = "mOFC plot pretty genotype x time 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = mOFC, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
+  facet_wrap( ~ type) +
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  
+  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("mOFC cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+#GRAPH IL genotype x time 040618
+summary(mrespg3a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + IL*t.num*type + IL*t.num*Genotype + IL*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg3a)
+leastsquare = lsmeans::lsmeans(mrespg3a, pairwise ~ IL:Genotype:t.num, at = list(IL = c(150,300,450),t.num = c(1,225,449)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$t.num <- as.factor(CLD$t.num)
+CLD$type <- recode_factor(CLD$t.num, `1` ="early",`225`="mid", `449`="late") #I tried without c() as well and that didn't work
+pdf(file = "IL plot pretty genotype x time 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = IL, y = lsmean, color = Genotype, label = .group)) + #what does label = group refer to?
+  facet_wrap( ~ type) +
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  
+  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("IL cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and time") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
 
 #DMS GRAPH time x type graph 040418
 summary(mrespg11 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DMS*t.num*Genotype + DMS*type*Genotype + DMS*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
@@ -951,3 +1238,191 @@ ggplot(CLD, aes( x = t.num, y = lsmean, color = DMS, label = .group)) +
 #scale_color_manual(values = c("magenta3","black"))
 dev.off() 
 
+#GRAPH lOFCx type (2-way) 040518
+summary(mrespg2 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + lOFC*t.num*type + lOFC*t.num*Genotype + lOFC*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg2)
+leastsquare = lsmeans::lsmeans(mrespg2, pairwise ~ lOFC:type, at = list(lOFC = c(400,800,1200)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "lOFC 2 WAY plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = lOFC, y = lsmean, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("lOFC cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+#GRAPH VMSx type (2-way) 040618
+summary(mrespg2A <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + VMS*t.num*type + VMS*t.num*Genotype + VMS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg2A)
+leastsquare = lsmeans::lsmeans(mrespg2A, pairwise ~ VMS:type, at = list(VMS = c(10,50,100)), adjust='tukey')
+library(dplyr)
+hist(cfos$VMS)
+mean(cfos$VMS)
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "VMS 2 WAY plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = VMS, y = lsmean, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("Nucleus Accumbens Core cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+
+#GRAPH NAcSx type (2-way) 040518
+summary(mrespg4b <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcS*t.num*type + NAcS*t.num*Genotype + NAcS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg4b)
+leastsquare = lsmeans::lsmeans(mrespg4b, pairwise ~ NAcS:type, at = list(NAcS = c(50,150,250)), adjust='tukey')
+library(dplyr)
+hist(cfos$VMS)
+mean(cfos$VMS)
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "NAcS 2 WAY plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = NAcS, y = lsmean, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("Nucleus Accumbens shell cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+
+#GRAPH NAcC X type (2-way) 040518
+summary(mrespg4a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + NAcC*t.num*type + NAcC*t.num*Genotype + NAcC*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg4a)
+leastsquare = lsmeans::lsmeans(mrespg4a, pairwise ~ NAcC:type, at = list(NAcC = c(50,150,300)), adjust='tukey')
+library(dplyr)
+hist(cfos$VMS)
+mean(cfos$VMS)
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "NAcC 2 WAY plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = NAcC, y = lsmean, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("Nucleus Accumbens CORE cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
+View(bdfc)
