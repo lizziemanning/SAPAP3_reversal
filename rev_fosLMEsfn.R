@@ -339,6 +339,49 @@ ggplot(aes(x=t.num, y=response, color = type),data = bdf) + stat_smooth(size=2, 
   facet_grid(Genotype ~ .)
 dev.off()
 
+pdf("Log response curves by genotype gam combine responses1.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1)),data = bdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1)), size=1, alpha=0.2, se=TRUE, method="loess")
+dev.off()
+
+pdf("Log response curves by genotype gam combine responses1a.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1)),data = bdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1)), size=1, alpha=0.2, se=TRUE, method="loess")+ facet_grid(Genotype ~ .)
+dev.off()
+
+pdf("Log response curves by genotype gam combine responses1B.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1), color = Genotype),data = bdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1), color = Genotype), size=1, alpha=0.2, se=TRUE, method="loess")
+dev.off()
+
+pdf("Log response curves by genotype gam combine responses1inc.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(inc + .1), color = Genotype),data = hdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=hdf, aes(x=t.num, y=log(inc + .1), color = Genotype), size=1, alpha=0.2, se=TRUE, method="loess")
+dev.off()
+
+
+pdf("Log response curves by genotype gam combine responses1corr.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(corr + .1), color = Genotype),data = hdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=hdf, aes(x=t.num, y=log(corr + .1), color = Genotype), size=1, alpha=0.2, se=TRUE, method="loess")
+dev.off()
+
+pdf("Log response curves by genotype gam combine responses1C.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1), color = Genotype + type),data = bdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1), color = type), size=1, alpha=0.2, se=TRUE, method="loess")
+dev.off()
+
+pdf("Log response curves by genotype gam combine responses2.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1)),data = bdf) + theme_bw(base_size=20) + xlab("Time, 4s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1)), size=1, alpha=0.2, se=TRUE, method="loess") +
+  facet_grid(Genotype ~ .)
+dev.off()
+
+pdf("Log response curves by genotype gam3.pdf", width=8, height=6)
+ggplot(aes(x=t.num, y=log(response + .1)),data = bdf) + theme_bw(base_size=20) + xlab("Time, 200s bins") + ylab("Responses (log)") +
+  stat_smooth(data=bdf, aes(x=t.num, y=log(response + .1)), size=2, alpha=0.2, se=TRUE, method="loess") + geom_count(position = "jitter") +
+  facet_grid(Genotype ~ .)
+dev.off()
+
 
 #  quick look at genotype
 # correct
@@ -356,6 +399,8 @@ summary(lmg1 <- lm(log(cfos$grooming.time) ~ cfos$genotype01))
 # LM 082717: yes I see that now the Genotype x type x time is highly significant
 theta.resp <- theta.ml(na.omit(c.all$response), mean(na.omit(c.all$response)), 972, limit = 50, eps = .Machine$double.eps^.25, trace = FALSE)
 summary(mrespg1 <- glm(response ~ 1 + t.num*type + type*Genotype +  (1:id), family = negative.binomial(theta = theta.resp), data = bdf))
+summary(mrespg1 <- glm(response ~ 1 + t.num*Genotype +  (1:id), family = negative.binomial(theta = theta.resp), data = bdf))
+summary(mrespg1 <- glm(response ~ t.num*type*Genotype +  (1:id), family = negative.binomial(theta = theta.resp), data = bdf))
 # LM 082717 CAR::ANOVA output did not provide analysis related to genotype x type x time ineteraction?
 car::Anova(mrespg1)
 
@@ -561,6 +606,7 @@ mean(cfos$VMS)
 
 #checking regions quickly
 summary(mrespg0404 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + IL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+summary(mrespg0404 <- glm(response ~ IL*t.num*type*Genotype +   (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 summary(mrespg0404a <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + mOFC*t.num*Genotype + mOFC*type*Genotype + mOFC*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg0404a)
 lsmip(mrespg10, CMS ~ type | Genotype , at = list(grooming.time = c(25,75,150)), ylab = "log(response rate)", xlab = "Type", type = "predicted" )
@@ -1190,7 +1236,7 @@ ggplot(CLD, aes( x = IL, y = lsmean, color = Genotype, label = .group)) + #what 
   
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
-
+hist(bdfc$response)
 #DMS GRAPH time x type graph 040418
 summary(mrespg11 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DMS*t.num*Genotype + DMS*type*Genotype + DMS*type*t.num +  (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
 car::Anova(mrespg11)
@@ -1426,3 +1472,49 @@ ggplot(CLD, aes( x = NAcC, y = lsmean, label = .group)) +
   scale_color_manual(values = c("magenta3","black"))
 dev.off()
 View(bdfc)
+
+#GRAPH DMSx type (2-way) 040518
+summary(mrespg13 <- glm(response ~ t.num*type+ t.num*Genotype + type*Genotype + DMS*t.num*type + DMS*t.num*Genotype + DMS*type*Genotype + (1:id), family = negative.binomial(theta = theta.resp), data = bdfc))
+car::Anova(mrespg13)
+leastsquare = lsmeans::lsmeans(mrespg13, pairwise ~ DMS:type, at = list(DMS = c(25,75,150)), adjust='tukey')
+library(dplyr)
+
+CLD = cld(leastsquare, alpha=0.05, Letters=letters,
+          adjust='tukey')
+CLD$type <- recode_factor(CLD$type,corr="Correct",inc="Incorrect")
+pdf(file = "DMS 2 WAY plot pretty 040618.pdf", width = 10, height = 6)
+pd = position_dodge(35)    ### How much to jitter the points on the plot
+ggplot(CLD, aes( x = DMS, y = lsmean, label = .group)) +
+  facet_wrap( ~ type) +
+  
+  geom_point(shape  = 16,
+             size   = 4,
+             position = pd) +
+  
+  geom_errorbar(
+    aes(ymin  =  asymp.LCL,
+        ymax  =  asymp.UCL),
+    width =  0.2,
+    size  =  0.7,
+    position = pd
+  ) +  theme_bw() +  theme(
+    axis.title   = element_text(face = "bold"),
+    axis.text    = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0)
+  ) +  ylab("Log-probability of response") + xlab("DMS cfos") +
+  ggtitle ("Behavior in reversal phase by genotype, regional cfos level, and response type") +
+  labs( caption  = paste0(
+    "\n",
+    "Boxes indicate the LS mean.\n",
+    "Error bars indicate the 95% ",
+    "confidence interval of the LS mean, Sidak method for 12 estimates. \n",
+    "Means sharing a letter are ",
+    "not significantly different ",
+    "(Tukey-adjusted comparisons for 12 estimates)."),
+    hjust = 0.5 ) +
+  geom_text(nudge_x = c(20, 10, 20, 10, 10, 10,10, 10, 10, 10, 10, 10),
+            nudge_y = c(0,  0, 0,  0, 0 , 0,0,0, .05,  -.05, 0, 0), color   = "black") + 
+  #nudge_y = 0, color   = "magenta3") +
+  
+  scale_color_manual(values = c("magenta3","black"))
+dev.off()
